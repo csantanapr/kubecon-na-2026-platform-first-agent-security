@@ -1,0 +1,39 @@
+# The platform team's half: the KRO ResourceGraphDefinition behind AgentWorkload.
+# From the deck (platform-half slide). The platform team writes this once. Every agent inherits it.
+# Shape verified against the KRO docs (kro.run) at talk time.
+# Illustrative shape. Verify fields against the KRO ResourceGraphDefinition docs for your version.
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: agentworkload
+spec:
+  schema:
+    apiVersion: acme.dev/v1alpha1
+    kind: AgentWorkload
+    spec:
+      agent: string
+      isolation: string | default="gvisor"
+      network: string | default="default-deny"
+      broker: string | default="openshell"
+  resources:
+    - id: sandbox
+      template:
+        kind: Sandbox
+        spec:
+          runtimeClassName: ${schema.spec.isolation}
+    - id: netpol
+      template:
+        kind: NetworkPolicy
+        spec:
+          policyTypes: [Egress]
+    - id: identity
+      template:
+        kind: ServiceAccount
+    - id: rbac
+      template:
+        kind: RoleBinding
+        subjects:
+          - name: ${identity.metadata.name}
+    - id: quota
+      template:
+        kind: ResourceQuota

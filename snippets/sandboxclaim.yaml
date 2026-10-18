@@ -1,0 +1,10 @@
+# Claim a pre-warmed sandbox. From the deck (demo-warm-pool slide).
+# Binds in under a second because the sandbox already exists.
+# Shape per agent-sandbox v1beta1 (warmPoolRef). Check your version's API.
+apiVersion: extensions.agents.x-k8s.io/v1beta1
+kind: SandboxClaim
+metadata:
+  name: agent-7
+spec:
+  warmPoolRef:
+    name: agent-pool

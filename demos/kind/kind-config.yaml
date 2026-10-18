@@ -1,0 +1,14 @@
+# kind cluster for the Talk 2 demos.
+#
+#   kind create cluster --name agent-demo --config kind-config.yaml
+#
+# NOTE: kind's default CNI (kindnet) does NOT enforce NetworkPolicy. The
+# network-policy demo installs Calico itself (see demo-network-policy/run.sh).
+# The sandbox and OpenShell demos need more than stock kind can give:
+# see FEASIBILITY.md.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+- role: worker
+- role: worker

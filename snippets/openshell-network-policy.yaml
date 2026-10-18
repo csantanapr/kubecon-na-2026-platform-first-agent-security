@@ -1,0 +1,14 @@
+# OpenShell network policy: the broker's rulebook. From the deck (demo-credentials slide).
+# This agent may reach one endpoint, read-only. No matching rule = deny.
+# Fields per OpenShell repo examples. Deny-by-default per security-policy.md.
+version: 1
+network_policies:
+  agent-net:
+    name: agent-network
+    endpoints:
+      - host: api.allowed.com
+        port: 443
+        protocol: rest
+    enforcement: enforce
+    access: read-only
+    # no matching rule = deny

@@ -1,0 +1,27 @@
+# The allowed API: a tiny HTTP echo server answering 200.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: api-allowed
+  namespace: agent-demo
+  labels:
+    app: api-allowed
+spec:
+  containers:
+  - name: api
+    image: hashicorp/http-echo:1.0
+    args: ["-listen=:80", "-text=ok"]
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-allowed
+  namespace: agent-demo
+spec:
+  selector:
+    app: api-allowed
+  ports:
+  - port: 80
+    targetPort: 80

@@ -1,0 +1,21 @@
+# Default-deny egress for the agent. From the deck (demo-network slide).
+# This agent may talk to one API on 443, and nothing else.
+# The same default-deny shape also blocks the cloud metadata endpoint,
+# so there is no credential theft via IMDS.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-egress
+spec:
+  podSelector:
+    matchLabels:
+      tenant: agent
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api-allowed
+    ports:
+    - port: 443

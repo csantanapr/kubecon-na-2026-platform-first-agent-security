@@ -1,0 +1,35 @@
+# Default-deny egress for the agent. Same shape as the talk's snippet
+# (snippets/networkpolicy-egress.yaml), adapted for this demo:
+# - port 80 against the local echo server instead of 443 to api.allowed.com
+#   (no TLS terminator in the demo).
+# - DNS to kube-dns is allowed so the agent can resolve the API by name.
+#   Without it, even the allowed destination is unreachable. The talk's
+#   snippet shows the minimal shape; this is the runnable shape.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-egress
+  namespace: agent-demo
+spec:
+  podSelector:
+    matchLabels:
+      tenant: agent
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - port: 53
+      protocol: UDP
+  - to:
+    - podSelector:
+        matchLabels:
+          app: api-allowed
+    ports:
+    - port: 80

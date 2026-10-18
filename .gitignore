@@ -1,0 +1,11 @@
+# Binaries and editor noise stay out of the repo.
+*.mp4
+*.mov
+*.avi
+*.mkv
+.DS_Store
+*~
+*.swp
+*.swo
+.idea/
+.vscode/

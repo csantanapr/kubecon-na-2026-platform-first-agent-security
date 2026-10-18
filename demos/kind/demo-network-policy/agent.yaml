@@ -1,0 +1,13 @@
+# The "agent": a pod with curl. Labeled tenant=agent so the policy selects it.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: agent
+  namespace: agent-demo
+  labels:
+    tenant: agent
+spec:
+  containers:
+  - name: agent
+    image: nicolaka/netshoot:latest
+    command: ["sleep", "3600"]
