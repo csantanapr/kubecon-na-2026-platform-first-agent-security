@@ -5,8 +5,8 @@ The platform, not the agent, enforces security.
 Timings come from the rehearsal cut (narrated at a measured pace, 23:31 total);
 a live delivery runs a little slower, and the rest of the 30 minutes is buffer and Q&A.
 "Clicks" = staged reveal steps. Demos run live on EKS with the `isolated-sandbox`
-RuntimeClass (AWS Nitro Sandbox); each demo slide in the stage deck has an embedded
-simulated fallback ("No cluster? Play the simulated fallback.").
+RuntimeClass (AWS Nitro Sandbox); each demo slide has a terminal replay of the live run
+(press T on the slide; → next command, Esc close).
 Isolation wording: gVisor is soft isolation, Kata is virtualization, AWS Nitro Sandbox
 is hardware isolation.
 
@@ -227,7 +227,7 @@ it. Nobody trades away hardware isolation to save thirty seconds, because the
 warm pool already saved them the thirty seconds.
 
 **Live on EKS:** warm pool of sandboxes on the `isolated-sandbox` RuntimeClass (AWS Nitro Sandbox). Show the sub-second bind, the bound sandbox's runtime class, and `uname -r` from inside the guest.
-**Fallback:** the embedded simulated video in the stage deck ("No cluster? Play the simulated fallback.").
+**Fallback:** press T for the full-screen terminal replay.
 
 ## Slide 9 - Default deny, explicit allow. (~1:58)
 
@@ -257,7 +257,7 @@ is short and reviewable. Two commands, one policy, sixty seconds, and the
 agent's network is a locked room with one labeled door.
 
 **Live on EKS:** the VPC CNI enforces NetworkPolicy, so no extra CNI install. Two curls from the agent pod: the allowed API returns ok, the open internet times out.
-**Fallback:** the embedded simulated video in the stage deck. Offline rehearsal on kind: demos/kind/demo-network-policy/run.sh (installs Calico).
+**Fallback:** press T for the full-screen terminal replay. Offline rehearsal on kind: demos/kind/demo-network-policy/run.sh (installs Calico).
 
 ## Slide 10 - The tenant never held the key. (~2:00)
 
@@ -290,7 +290,7 @@ the supervisor the agent can never reach. That is what "no ambient authority"
 looks like when you actually mean it.
 
 **Live on EKS:** OpenShell gateway on Kubernetes. `openshell sandbox create`, then `openshell sandbox exec ... env | grep -i token` returns nothing.
-**Fallback:** the embedded simulated video in the stage deck.
+**Fallback:** press T for the full-screen terminal replay.
 
 ## Slide 11 - OpenShell on Kubernetes, in production. (~1:16)
 
