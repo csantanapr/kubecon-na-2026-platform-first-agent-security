@@ -95,6 +95,9 @@ Second, Kata. Kata is virtualization. Each sandbox is a lightweight virtual mach
 click
 
 Third, AWS Nitro Sandbox. AWS Nitro Sandbox is hardware isolation, through the isolated-sandbox RuntimeClass. This is the new runtime we are launching for KubeCon, and it is the one the rest of this talk runs on. Here the isolation boundary is enforced in hardware, not just by the host's software. Even a full compromise inside the guest, root in the guest kernel, does not get you the host, because the boundary is not a host software construct the attacker can reach. This is hardware-level isolation, and it is the right default when the tenant is an autonomous agent you genuinely do not trust.
+
+click
+
 agent-sandbox, the Kubernetes SIG project, delegates to all three of these through RuntimeClass. One Sandbox API, three boundaries, chosen per workload. This talk's pool runs the hardware-isolated runtime, and the next demo proves that boundary from inside the guest.
 
 ## demo-warm-pool

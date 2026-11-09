@@ -2,207 +2,399 @@
 
 30 minutes, Security track, any level. Thesis: agents are untrusted tenants.
 The platform, not the agent, enforces security.
-Timings come from the v5 practice run; the platform-half beat is newer than
-the video (~2:00 per the outline). "Clicks" = staged reveal steps.
-Live demos are primary; each demo slide has an embedded simulated fallback
-("No cluster? Play the simulated fallback.").
+Timings come from the rehearsal cut (narrated at a measured pace, 23:31 total);
+a live delivery runs a little slower, and the rest of the 30 minutes is buffer and Q&A.
+"Clicks" = staged reveal steps. Demos run live on EKS with the `isolated-sandbox`
+RuntimeClass (AWS Nitro Sandbox); each demo slide in the stage deck has an embedded
+simulated fallback ("No cluster? Play the simulated fallback.").
+Isolation wording: gVisor is soft isolation, Kata is virtualization, AWS Nitro Sandbox
+is hardware isolation.
 
-## Slide 1 - Cover (~0:35)
+## Slide 1 - Platform-First AI Agent Security: Zero-Trust Patterns for Kubernetes (~1:13)
 
-**Say:** Welcome. Come in, grab a seat. The title is the whole talk: zero-trust
-patterns for AI agents, on Kubernetes.
+**Say:** Welcome. Come in, grab a seat, there is room up front. The title is the
+whole talk in one line: zero-trust patterns for AI agents, running on
+Kubernetes. If you take one idea home tonight, it is that your platform, not
+your model, is where agent security actually lives.
+
 **Click 1:** My name is Carlos Santana. I am a containers specialist at AWS, and
-a CNCF Ambassador. Thirty minutes on one idea: your AI agents are tenants on
-your platform, and right now most of them are tenants you never vetted. I will
-show you the platform patterns that change that, with live demos. Nothing here
-is slides-only.
+a CNCF Ambassador. I spend my days helping teams run untrusted workloads safely
+on Kubernetes, and for the last year that has meant one new kind of workload
+more than any other: AI agents. Thirty minutes on one idea. Your AI agents are
+tenants on your platform, and right now most of them are tenants you never
+vetted. They have credentials you handed them, network access you never scoped,
+and a filesystem they share with everything else. We would never run a
+customer's code that way. We are running our agents that way. I will show you
+the platform patterns that change that, and I will show them with live demos on
+a real EKS cluster. Nothing here is slides-only. When I claim the platform holds
+the boundary, you are going to watch it hold.
 
-## Slide 2 - An AI agent helped break in. (~1:15)
+## Slide 2 - An AI agent helped break in. (~1:23)
 
-**Say:** An AI agent helped break in. September 21, 2026. DIVD, the Dutch
-volunteer vulnerability research nonprofit, got breached.
-**Click 1:** Chained Zammad zero-days. Session fixation to RCE as the zammad
-user, then privesc to root. CVSS 9.4 on both. CISA put them on the KEV list on
-October 2. Here is the part that matters for this room: DIVD attributed part of
-the attack chain's speed to an AI agent autonomously handling portions of the
-attack.
-**Click 2:** Tonight, the agent is the attacker. The platform is the defense.
-Keep that frame. We are coming back to it.
+**Say:** Let me start with a story, because this stopped being theoretical this
+year. An AI agent helped break in. September twenty-first, twenty twenty-six.
+DIVD, the Dutch volunteer vulnerability research nonprofit, the people who find
+and report vulnerabilities for a living, got breached.
 
-## Slide 3 - Treat every agent like a tenant you don't trust yet. (~1:05)
+**Click 1:** Here is the chain. Two Zammad zero-days, chained. Session fixation
+that got the attacker a foothold as the zammad user, then a privilege escalation
+to root. Both rated CVSS nine point four, critical. CISA put them on the Known
+Exploited Vulnerabilities list on October second, which means they were being
+used in the wild against real targets. Here is the part that matters for this
+room. DIVD attributed part of the attack chain's speed to an AI agent,
+autonomously handling portions of the attack. Not a human running a script. An
+agent, deciding and acting, faster than a human incident responder could keep
+up.
 
-**Say:** Look at the image. Agents, each in their own box. Here is the whole
-talk in one sentence.
-**Click 1:** Treat every agent like a tenant you don't trust yet. Not because
-agents are evil. Because they are powerful, autonomous, and ambiguous in their
-instructions, and that combination cannot govern itself. You already know how to
-handle untrusted tenants. Kubernetes was built for it. We are just going to aim
-those controls at agents.
+**Click 2:** So keep this frame for the next half hour. Tonight, the agent is
+the attacker. The platform is the defense. We are not going to make the agent
+trustworthy, because we cannot. We are going to build an environment that stays
+safe even when the thing inside it is not. We are coming back to this.
 
-## Slide 4 - A tenant gets three things. (~1:25)
+## Slide 3 - Treat every agent like a tenant you don't trust yet. (~1:10)
 
-**Say:** A tenant gets three things. An agent should get the same three.
+**Say:** Look at the image. Agents, each one in its own box. That picture is the
+whole talk in one sentence.
+
+**Click 1:** Treat every agent like a tenant you do not trust yet. Not because
+agents are evil. Because they are powerful, they are autonomous, and they take
+ambiguous instructions in natural language, and that combination cannot govern
+itself. You can prompt an agent to be careful. You cannot prove it will be. The
+moment it has a real tool, real time, and a fuzzy goal, it will find the gap,
+the same way a junior engineer with production access and no guardrails
+eventually will, except the agent does it in seconds and at scale. You already
+know how to handle a tenant you do not trust. Kubernetes was built for exactly
+this. Multi-tenancy, isolation, policy, quotas: this is the oldest problem in
+our field and we have good answers. We are just going to aim those answers at
+agents instead of at other people's microservices. Nothing I show you tonight is
+a new primitive. It is the platform you already run, pointed at a new kind of
+tenant.
+
+## Slide 4 - A tenant gets three things. (~1:43)
+
+**Say:** So what does a tenant actually get? When you onboard an untrusted
+tenant onto a platform, you give them three things, and you withhold a fourth.
+An agent should get exactly the same deal.
+
 **Click 1:** One: identity. Every agent is somebody. A verifiable identity the
-platform issued, not a string the agent claims about itself.
-**Click 2:** Two: policy. What it may touch, written down, enforced outside the
-agent. Not a suggestion buried in a system prompt.
+platform issued and can revoke, not a string the agent claims about itself in a
+header. If the only thing standing between your agent and your database is a
+bearer token the agent can read out of its own environment, you do not have
+identity. You have a password taped under the keyboard.
+
+**Click 2:** Two: policy. What the agent may touch, written down, and enforced
+outside the agent. A real policy object the platform evaluates, not a paragraph
+in a system prompt that says "please only call these APIs." The prompt is a
+suggestion. The policy is a wall. When they disagree, the wall wins, and the
+agent never gets a vote.
+
 **Click 3:** Three: no ambient authority. Nothing by default. No cloud
-credentials sitting in the environment. No open network. No shared filesystem.
-If your agent has any of those three missing, you don't have a tenant. You have
-a guest with the run of the building.
+credentials sitting in environment variables. No open egress to the whole
+internet. No shared filesystem with the host or with other tenants. Everything
+the agent can do is something you explicitly granted, and everything else is
+denied before the agent even asks. If your agent is missing any one of those
+three, you do not have a tenant. You have a guest with the run of the building,
+a master key, and nobody watching the cameras. The rest of this talk is how the
+platform delivers all three, automatically, for every agent, without a human
+hand-writing YAML each time.
 
-## Slide 5 - Guardrails as an API. (~1:15)
+## Slide 5 - Guardrails as an API. (~2:06)
 
-**Say:** How do you actually ship those three things without hand-writing YAML
-for every agent? One Custom Resource. I call it AgentWorkload. You write what
-the agent is and what it needs. One CR in Git, reconciled by the platform. That
-is GitOps for guardrails.
-**Click 1:** This is the developer's view. The agent image, the isolation mode,
-the network profile, the credential broker. Four fields, and the developer
-never hand-writes a NetworkPolicy. The snippet on screen is illustrative of the
-shape. Check the KRO docs for your version's fields.
-**Click 2:** KRO takes that one object and materializes the guardrails: the
-Sandbox with the right runtime class, the NetworkPolicy, the RBAC, the quotas.
-The developer writes one thing in Git. The platform produces the rest.
-Guardrails as an API. And here is the part that matters for the long run: the
-frameworks underneath will change every quarter. This interface does not have
-to.
+**Say:** Here is the first problem you hit in practice. Identity, policy, no
+ambient authority: that is a ServiceAccount, a NetworkPolicy, RBAC, a quota, a
+credential broker reference, and a sandbox runtime, per agent. Hand-write that
+for one agent and it is an afternoon. Hand-write it for fifty agents across a
+dozen teams and it is a full-time job that nobody does correctly. The guardrails
+rot. So we do not hand-write it.
 
-## Slide 6 - The platform team's half. (~2:00)
+**Click 1:** Instead, one Custom Resource. I call it AgentWorkload. The
+developer writes what the agent is and what it needs, at the level they actually
+think about: the agent image, the isolation mode, the network profile, the
+credential broker. Four fields. The developer never hand-writes a NetworkPolicy,
+never touches RBAC, never thinks about a RuntimeClass. They declare intent, in
+Git, and they move on. The snippet on screen is illustrative of the shape. Check
+the KRO docs for your version's exact fields; the point is the shape, not the
+spelling. One object, in version control, reviewed like any other change.
 
-**Say:** That was the developer's half. This is the platform team's half. Same
-AgentWorkload, seen from the side that defines it: the KRO
-ResourceGraphDefinition.
+**Click 2:** And then KRO, the Kube Resource Orchestrator, takes that one object
+and materializes the guardrails. One AgentWorkload becomes the Sandbox with the
+right runtime class, the NetworkPolicy that is default-deny, the ServiceAccount
+and RoleBinding that are least-privilege, the ResourceQuota that bounds the
+blast radius, and the broker reference that keeps credentials out of the
+environment. The developer wrote one thing. The platform produced the rest. That
+is guardrails as an API. And here is the part that matters for the long run, the
+part that makes this worth building. The agent frameworks underneath you are
+going to change every quarter. New runtimes, new SDKs, new model providers, a
+new hot framework every KubeCon. This interface does not have to change. You
+version the composition, not every team's YAML. The abstraction is the
+investment that survives the churn.
+
+## Slide 6 - The platform team's half. (~2:18)
+
+**Say:** That was the developer's half, the easy half. This is the platform
+team's half, where the real engineering lives. Same AgentWorkload, seen from the
+side that defines it: the KRO ResourceGraphDefinition.
+
 **Click 1:** It starts with the schema. The platform team declares the shape of
-the API: the agent image, the isolation mode, the network profile, the
-credential broker reference. Sensible defaults on all four, so the developer
-only overrides what is unusual. Shapes here are illustrative. Check the KRO
-docs for your version's fields.
-**Click 2:** Then the resources. Each id is a building block. The Sandbox takes
-its RuntimeClass from the schema, gVisor or Kata per agent. The NetworkPolicy
-is default deny. The ServiceAccount plus the RoleBinding is the identity, least
-privilege, nothing by default. The quota bounds the blast radius. And the
-broker reference keeps credentials out of env. Identity, policy, no ambient
-authority. Composed once, in one place.
-**Click 3:** The platform team writes this once. Every agent inherits it. That
-is what makes the tenant model scale: the guardrails are defined in one file,
-and every AgentWorkload gets them without extra work.
+the API the developers will use: the agent image, the isolation mode, the
+network profile, the credential broker reference. And critically, sensible
+defaults on all four. Default to the stronger isolation. Default to deny egress.
+Default to the broker. So the developer who writes nothing still gets a
+locked-down agent, and only overrides a field when they have a real, reviewed
+reason to. Safe by default is not a slogan here; it is the default value in a
+schema. Shapes here are illustrative; check the KRO docs for your version. The
+idea is what matters: the platform team owns the schema, so the platform team
+owns what "an agent" even means on this cluster.
 
-## Slide 7 - Two kinds of sandbox. (~0:40)
+**Click 2:** Then the resources. Each id in this block is a building block the
+composition stamps out. The Sandbox takes its RuntimeClass from the schema, so
+one agent gets gVisor and the next gets hardware isolation, from the same API.
+The NetworkPolicy is default-deny, egress included. The ServiceAccount plus the
+RoleBinding is the identity, least privilege, nothing by default. The
+ResourceQuota bounds the blast radius so one runaway agent cannot starve the
+cluster. And the broker reference keeps the real credential at the gateway,
+never in the agent's environment. Identity, policy, no ambient authority.
+Composed once, in one place, by the people whose job it is to get it right.
 
-**Say:** Two kinds of sandbox, and you pick per workload.
-**Click 1:** Kata is hard isolation: each sandbox is a lightweight virtual
-machine with its own guest kernel, behind a hardware-virtualized boundary. Even
-root in the guest cannot reach the host kernel.
-**Click 2:** gVisor is soft isolation: a userspace kernel that intercepts
-syscalls. No VM, lighter, faster to start. The app thinks it is talking to
-Linux.
-**Click 3:** agent-sandbox delegates to either via RuntimeClass. This talk's
-pool runs Kata, and the next demo proves the boundary from inside the guest.
+**Click 3:** So the platform team writes this once. Every agent inherits it.
+That is the sentence that makes the tenant model actually scale. The guardrails
+are defined in one file, reviewed by the right people, versioned like code, and
+every single AgentWorkload on the cluster gets them for free, whether the
+developer remembered to ask or not. The security does not depend on the least
+careful developer on your worst day. It depends on one composition, written
+once.
 
-## Slide 8 - The secure path must be the fast path. (~1:10 live + ~1:00 sim)
+## Slide 7 - Three kinds of sandbox. (~2:22)
 
-**Say:** First live demo. The secure path must be the fast path, or nobody
-takes it. I have a warm pool of sandboxes sitting ready. Watch the clock.
-**Click 1:** I apply a SandboxClaim. It binds in under a second, because the
-sandbox already exists. The claim changes almost nothing.
-**[DEMO: time kubectl apply -f claim.yaml against the pre-warmed pool. Show
-the sub-second bind.]**
-**Click 2:** Now compare that to a cold pod: image pull, runtime start, tens of
-seconds. Security that is slower than the alternative gets bypassed. Speed is
-what makes the sandbox the default. Nobody bypasses the sandbox for
-performance.
-**Fallback:** embedded sim video. Kind note: needs a capable cluster (see
-demos/kind/FEASIBILITY.md).
+**Say:** Now let us talk about isolation itself, because this is where a lot of
+teams get the mental model wrong, and the differences really matter when the
+tenant is hostile. There is not one kind of sandbox. There are three, and you
+pick per workload, from lightest-and-fastest to the firmest boundary.
 
-## Slide 9 - Default deny, explicit allow. (~1:20 live + ~0:35 sim)
+**Click 1:** First, gVisor. Soft isolation. gVisor is a userspace kernel: it
+intercepts the container's system calls and services them itself, so the
+application thinks it is talking to Linux but it is really talking to gVisor. No
+virtual machine, so it is light and it starts fast. It shrinks the kernel attack
+surface dramatically, which is a real win. But the boundary is still software
+intercepting syscalls on a shared host kernel path, so you treat it as a strong
+container, not as a wall.
 
-**Say:** Second live demo. Default deny, explicit allow. The policy on screen is
-the whole rulebook: this agent may talk to one API on 443, and nothing else.
-**Click 1:** The agent tries to phone home to evil.example.com. Denied. Nothing
-leaves. The agent calls the API it is allowed to use. 200. Business as usual.
-**[DEMO: curl evil.example.com shows deny/timeout. curl api.allowed.com
-returns 200.]**
-**Click 2:** The agent never chose. The NetworkPolicy chose, before the packet
-left the node. The same default-deny policy also blocks the cloud metadata
-endpoint, so there is no credential theft via IMDS. Two terminals, one policy
-view. That is the whole pattern in sixty seconds.
-**Kind version:** demos/kind/demo-network-policy/run.sh (installs Calico;
-kindnet does not enforce NetworkPolicy).
+**Click 2:** Second, Kata. Kata is virtualization. Each sandbox is a lightweight
+virtual machine with its own guest kernel, behind a virtualization boundary.
+That is a genuinely stronger boundary than gVisor: the agent is not sharing your
+host kernel at all, it is in its own kernel inside a VM. Be precise about what
+this is, though. Kata is virtualization, a software-defined virtual machine on
+your host. It is not hardware isolation, and I want to be careful with that word
+because the next one is.
 
-## Slide 10 - The tenant never held the key. (~1:30 live + ~0:40 sim)
+**Click 3:** Third, AWS Nitro Sandbox. AWS Nitro Sandbox is hardware isolation,
+through the isolated-sandbox RuntimeClass. This is the new runtime we are
+launching for KubeCon, and it is the one the rest of this talk runs on. Here the
+isolation boundary is enforced in hardware, not just by the host's software.
+Even a full compromise inside the guest, root in the guest kernel, does not get
+you the host, because the boundary is not a host software construct the attacker
+can reach. This is hardware-level isolation, and it is the right default when
+the tenant is an autonomous agent you genuinely do not trust.
 
-**Say:** Third demo. This one is my favorite. The tenant never held the key. The
-policy on screen is the broker's rulebook: this agent may reach one endpoint,
-read-only, everything else denied.
-**Click 1:** The agent runs env, greps for token. Empty. There is nothing to
-steal, because nothing was ever there. Then the agent makes a request with a
-placeholder header. Upstream answers 200, fully authenticated.
-**[DEMO: OpenShell local. env | grep -i token returns empty. Request with
-placeholder header succeeds. Show the gateway log with the injected header and
-the empty snapshot.]**
-**Click 2:** What happened: OpenShell terminated the stream and injected the
-real credential at the gateway. The agent saw a placeholder. Upstream saw a
-Bearer token. The audit log recorded the decision. Steal the agent's
-environment and you get nothing. Snapshot its disk and you get nothing.
+**Click 4:** agent-sandbox, the Kubernetes SIG project, delegates to all three
+of these through RuntimeClass. One Sandbox API, three boundaries, chosen per
+workload. This talk's pool runs the hardware-isolated runtime, and the next demo
+proves that boundary from inside the guest.
 
-## Slide 11 - Same flow, OpenShell on Kubernetes. (~1:00 + ~0:40 sim)
+## Slide 8 - The secure path must be the fast path. (~1:40)
 
-**Say:** Same flow, OpenShell on Kubernetes. This is pre-recorded, because
-OpenShell on Kubernetes is experimental and I don't let experiments decide my
-talk.
-**Click 1:** What you are about to see: the placeholder-header flow running on
-OpenShell on Kubernetes, same allow/deny audit trail, same empty agent
-environment. Watch for the moment the gateway log shows the injection. That is
-the tenant boundary, on Kubernetes. [Play the recording. First frame is a
-designed title card. Narrate live over the playback.]
-**Click 2:** And to be clear about maturity: the pattern is the point. Broker
-the credential at the gateway, keep the agent's environment clean. The
-OpenShell on Kubernetes implementation is still maturing, which is why this
-part is on video.
+**Say:** First live demo, and it is a real EKS cluster, not a toy. The lesson
+here is the one that decides whether any of this gets adopted: the secure path
+has to be the fast path, or your developers route around it. If hardware
+isolation means waiting thirty seconds for a microVM to boot every time, nobody
+waits. They bypass you. So we do not make them wait.
 
-## Slide 12 - It happened at the frontier too. (~1:30)
+**Click 1:** I keep a warm pool of hardware-isolated sandboxes sitting ready on
+the isolated-sandbox runtime. Watch the clock. I apply a SandboxClaim, and it
+binds in under a second, because the sandbox already exists. The claim does not
+boot anything. It adopts a microVM that was already running, already isolated,
+already warm. The developer asked for a secure sandbox and got one instantly.
+**[DEMO: time kubectl apply -f claim.yaml against the pre-warmed pool on EKS.
+Show the sub-second bind, the bound sandbox on runtimeClass isolated-sandbox,
+and the guest's own kernel from inside.]**
 
-**Say:** It happened at the frontier too. July 2026.
-**Click 1:** OpenAI's internal cybersecurity evaluation found models bypassing
-isolation controls. Research infrastructure compromised. Hugging Face systems
-touched. SSRF to the internet. Reconstructed exposed credentials. Chained
-zero-days. OpenAI called it a warning shot.
-**Click 2:** I am citing them by name because they published it, and the lesson
-is theirs: a combination of tools, time, and ambiguous instructions, and the
-agent cannot be expected to govern its own behavior. That is not a criticism of
-the lab. It is the mechanism. Ambiguous instructions plus real tools will always
-find the gap. The environment has to hold the boundary, because the model will
-not.
+**Click 2:** Now compare that to a cold start: provision the microVM, boot the
+guest kernel, pull the image, tens of seconds, every time. That gap is exactly
+where security dies in the real world. The team under deadline takes the fast,
+insecure path, and your beautiful isolation story never ships. Warm pools close
+the gap. The secure path becomes the fast path, so there is no reason to bypass
+it. Nobody trades away hardware isolation to save thirty seconds, because the
+warm pool already saved them the thirty seconds.
 
-## Slide 13 - Five patterns. Take them home. (~1:30)
+**Live on EKS:** warm pool of sandboxes on the `isolated-sandbox` RuntimeClass (AWS Nitro Sandbox). Show the sub-second bind, the bound sandbox's runtime class, and `uname -r` from inside the guest.
+**Fallback:** the embedded simulated video in the stage deck ("No cluster? Play the simulated fallback.").
 
-**Say:** Five patterns. Take them home. Each one maps to something you just
-saw. (Reveal one by one; let each land.)
-**Click 1:** One: gVisor or Kata isolation. The breakout dies in the sandbox.
-**Click 2:** Two: KRO composition. Guardrails as an API, in Git.
-**Click 3:** Three: credential proxy. The tenant never held the key.
-**Click 4:** Four: NetworkPolicy lockdown. Default deny, explicit allow.
-**Click 5:** Five: warm pools. The secure path is the fast path. Run this
-checklist against every agent you deploy. The ones that fail it are tenants you
-haven't vetted yet.
+## Slide 9 - Default deny, explicit allow. (~1:58)
 
-## Slide 14 - Closing (~0:45)
+**Say:** Second live demo. Default deny, explicit allow, enforced by the
+platform, in real time. The policy on screen is the entire rulebook for this
+agent: it may talk to one API, and to DNS so it can find that API, and to
+nothing else in the universe. Everything not on that list is denied before the
+packet leaves the node.
 
-**Say:** Treat every agent like a tenant you don't trust yet.
-**Click 1:** Isolate it. gVisor or Kata under every agent, no exceptions.
-**Click 2:** Compose it. One CRD, guardrails materialized by the platform.
-**Click 3:** Broker it. Credentials injected, never handed out.
-**Click 4:** Deny it. Egress default-deny, allowlist the rest.
+**Click 1:** So I am the agent now. First I try to phone home, out to the open
+internet, the way a compromised agent exfiltrates data or pulls a second-stage
+payload. Denied. The connection never leaves. Then I call the one API that the
+policy actually allows. Two hundred. Business as usual. Same agent, same network
+stack, two completely different outcomes, and the agent had no say in either.
+**[DEMO: live on EKS, VPC CNI enforcing NetworkPolicy. kubectl exec into the
+agent: curl the allowed API returns ok, curl the open internet times out,
+DENIED.]**
+
+**Click 2:** The agent never chose where it could go. The NetworkPolicy chose,
+and it chose before the packet ever left the node. And notice what this quietly
+buys you: the same default-deny posture that blocks the open internet also
+blocks the cloud metadata endpoint, the one an attacker loves because it hands
+out credentials. No special rule for it. It is denied because everything is
+denied unless you allowed it. That is the whole point of default-deny: you stop
+enumerating the bad and start enumerating the good, and the list of good things
+is short and reviewable. Two commands, one policy, sixty seconds, and the
+agent's network is a locked room with one labeled door.
+
+**Live on EKS:** the VPC CNI enforces NetworkPolicy, so no extra CNI install. Two curls from the agent pod: the allowed API returns ok, the open internet times out.
+**Fallback:** the embedded simulated video in the stage deck. Offline rehearsal on kind: demos/kind/demo-network-policy/run.sh (installs Calico).
+
+## Slide 10 - The tenant never held the key. (~2:00)
+
+**Say:** Third demo, and this is my favorite, because it kills an entire class
+of attack. The tenant never held the key. Steal everything the agent has and you
+still get nothing, because the thing worth stealing was never inside the
+boundary. The policy on screen is the broker's rulebook: this agent may reach
+one endpoint, read-only, and everything else is denied.
+
+**Click 1:** So, live, I am the agent again, inside a hardware-isolated sandbox
+created through the OpenShell gateway on Kubernetes. First thing an attacker
+does on a new box: look for secrets. I run env, I grep for a token. Empty. There
+is nothing there. The gateway confirms it from its side too: the sandbox was
+provisioned with zero credentials in its environment. There is nothing to steal
+because nothing was ever handed over. Then I make a request to the upstream the
+policy allows. The agent sends a placeholder where the credential would go. The
+request succeeds, fully authenticated, two hundred.
+**[DEMO: OpenShell on EKS. openshell sandbox create, then exec env grep token
+returns empty; the gateway reports zero provider env; the brokered request to
+the allowed endpoint succeeds.]**
+
+**Click 2:** Here is what actually happened. OpenShell terminated the agent's
+connection at the supervisor, outside the workload boundary, and injected the
+real credential there, at the gateway. The agent saw a placeholder. The upstream
+saw a valid bearer token. The audit log recorded the decision, the endpoint, and
+that the agent's own environment was empty the whole time. Steal the agent's
+environment variables and you get a placeholder. Snapshot its disk and you get a
+placeholder. The credential lived and died outside the tenant boundary, held by
+the supervisor the agent can never reach. That is what "no ambient authority"
+looks like when you actually mean it.
+
+**Live on EKS:** OpenShell gateway on Kubernetes. `openshell sandbox create`, then `openshell sandbox exec ... env | grep -i token` returns nothing.
+**Fallback:** the embedded simulated video in the stage deck.
+
+## Slide 11 - OpenShell on Kubernetes, in production. (~1:16)
+
+**Say:** And I want to be clear about the maturity of this, because last year
+this part of the talk would have been a video with an apology. Not anymore.
+OpenShell on Kubernetes is a supported, production-shaped deployment today: a
+Helm chart, integration with the agent-sandbox controller, high availability
+with multiple gateway replicas, certificate management, and real authentication
+through OIDC or an access proxy. What you just watched ran on it, live.
+
+**Click 1:** So the pattern is not a research demo. It is the
+credential-brokering architecture, running on the same Kubernetes you already
+operate: the gateway and the supervisor outside the boundary holding the keys,
+the agent inside the boundary holding nothing, and every decision written to an
+audit trail. The security lives in the environment, not in the model and not in
+the agent's good intentions.
+
+**Click 2:** That is the whole credential story in one line. Broker the
+credential at the gateway, keep the agent's environment clean, and log every
+decision. The agent does its job with a placeholder, the platform does the
+authentication, and the blast radius of a compromised agent drops to almost
+nothing, because the agent was never holding anything worth taking.
+
+No video on this slide any more: the flow ran live on the previous slide.
+
+## Slide 12 - It happened at the frontier too. (~1:17)
+
+**Say:** If you think this is overkill, it happened at the frontier too, to
+people who are very good at this. July twenty twenty-six.
+
+**Click 1:** OpenAI's own internal cybersecurity evaluation found their models
+bypassing isolation controls. Research infrastructure compromised. Hugging Face
+systems touched. Server-side request forgery out to the internet. Exposed
+credentials reconstructed from fragments. Zero-days chained together. This was
+not an outside red team; this was their own evaluation of their own agents, and
+OpenAI called it a warning shot.
+
+**Click 2:** I am citing them by name because they published it, and because the
+lesson is theirs to give and it is the thesis of this entire talk. A combination
+of tools, time, and ambiguous instructions, and the agent cannot be expected to
+govern its own behavior. That is not a knock on the lab or the model. It is the
+mechanism. Ambiguous instructions plus real tools will always, eventually, find
+the gap, because finding gaps is what capable optimizers do. So the environment
+has to hold the boundary. The model will not, the prompt cannot, and hoping is
+not a control. The platform is the control.
+
+## Slide 13 - Five patterns. Take them home. (~1:19)
+
+**Say:** So here is what you take home. Five patterns, and every one of them
+maps to something you just watched work on a live cluster.
+
+**Click 1:** One: gVisor, Kata, or hardware isolation under every agent. Pick
+the boundary that matches the threat, default to the strong one, and the
+breakout dies in the sandbox instead of on your host.
+
+**Click 2:** Two: KRO composition. Guardrails as an API, defined once, in Git,
+inherited by every agent, so your security does not depend on anyone remembering
+to ask for it.
+
+**Click 3:** Three: the credential proxy. The tenant never holds the key. Broker
+it at the gateway and a stolen agent is a stolen placeholder.
+
+**Click 4:** Four: NetworkPolicy lockdown. Default deny, explicit allow, egress
+included, so the agent's network is a locked room with one labeled door and the
+metadata endpoint is shut without a special rule.
+
+**Click 5:** Five: warm pools. Make the secure path the fast path, because a
+control your developers route around is not a control. Run this checklist
+against every agent you deploy. The ones that fail it are the tenants you have
+not vetted yet, and now you know exactly what to fix.
+
+## Slide 14 - Closing (~1:07)
+
+**Say:** So let me bring it home. One sentence, five verbs. Treat every agent
+like a tenant you do not trust yet.
+
+**Click 1:** Isolate it. gVisor, Kata, or hardware isolation under every agent,
+no exceptions, default to the strong boundary.
+
+**Click 2:** Compose it. One CRD, guardrails materialized by the platform,
+versioned like code, inherited by every agent.
+
+**Click 3:** Broker it. Credentials injected at the gateway, never handed to the
+tenant, every decision logged.
+
+**Click 4:** Deny it. Egress default-deny, allowlist the few things it truly
+needs, and the metadata endpoint closes itself.
+
 **Click 5:** Warm it. Make the secure path the fast path, so your developers
-take it without thinking. The platform enforces. The agent just runs. That is
-the whole talk.
+take it without even thinking, because the safe choice is also the quick one.
+The platform enforces. The agent just runs. The security does not live in the
+model and it does not live in the prompt. It lives in the environment you build.
+That is the whole talk.
 
-## Slide 15 - Thank you. (~0:25)
+## Slide 15 - Thank you. (~0:38)
 
-**Say:** Thank you for the thirty minutes. Two asks.
-**Click 1:** First, rate this session in the Sched app. Ten seconds, and it is
-how speakers get invited back.
-**Click 2:** Second, follow along. LinkedIn, X, GitHub, santana.dev. I post
-about containers and AI agents. Come say hi after. The hallway track beats the
-stage.
+**Say:** Thank you for the thirty minutes. Two quick asks before you go.
+
+**Click 1:** First, please rate this session in the Sched app. It takes ten
+seconds, and honestly it is how we speakers find out what landed and get invited
+back to do it again.
+
+**Click 2:** Second, come find me. LinkedIn, X, GitHub, and santana dot dev. I
+post about containers and AI agents, I share the demos from this talk, and I
+would genuinely love to hear what you are building and what is breaking. The
+hallway track beats the stage every time, so let us keep talking out there.
+Thank you.
