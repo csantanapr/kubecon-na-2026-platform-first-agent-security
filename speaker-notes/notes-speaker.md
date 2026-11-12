@@ -262,8 +262,8 @@ The design is one language per sandbox. You pick YAML or Cedar when you create t
 
 click
 
-▶ Same answers on 2,909 cases, and Cedar is stricter where they differ; it's in review, so try it.
-And it gives the same answers. The proposal pairs YAML and Cedar policies through both engines: 2,909 cases, they agree, and in the five that differ Cedar is the stricter one. On screen is the same rule as our demo, in Cedar: curl may read the GitHub API, GET, HEAD and OPTIONS only. This is in review as RFC 0020, landing in development builds first, so try it, and send feedback.
+▶ Rewrite a policy in Cedar and it makes the same allow and block decisions; it's in review, so try it.
+And switching does not change what gets through. The project wrote the same policies in YAML and in Cedar and ran 2,909 test requests through both. They allowed and blocked the same things, and in the five cases that differ, Cedar blocks a little more. Same decisions, safer at the edges. On screen is the same rule as our demo, in Cedar: curl may read the GitHub API, GET, HEAD and OPTIONS only. This is in review as RFC 0020, landing in development builds first, so try it, and send feedback.
 
 click
 

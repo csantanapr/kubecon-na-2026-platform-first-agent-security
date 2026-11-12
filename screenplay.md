@@ -370,12 +370,13 @@ its policy language.
 you create the sandbox, and a Cedar sandbox is decided by Cedar alone. No mixing
 two engines in one decision path.
 
-**Click 2:** And it gives the same answers. The proposal pairs YAML and Cedar
-policies through both engines: 2,909 cases, they agree, and in the five that
-differ Cedar is the stricter one. On screen is the same rule as our demo, in
-Cedar: curl may read the GitHub API, GET, HEAD and OPTIONS only. This is in
-review as RFC 0020, landing in development builds first, so try it, and send
-feedback.
+**Click 2:** And switching does not change what gets through. The project wrote
+the same policies in YAML and in Cedar and ran 2,909 test requests through both.
+They allowed and blocked the same things, and in the five cases that differ,
+Cedar blocks a little more. Same decisions, safer at the edges. On screen is the
+same rule as our demo, in Cedar: curl may read the GitHub API, GET, HEAD and
+OPTIONS only. This is in review as RFC 0020, landing in development builds
+first, so try it, and send feedback.
 
 **Click 3:** And notice the pattern. OpenShell and Cedar are both CNCF projects,
 building on each other. That is the theme of the whole stack.
