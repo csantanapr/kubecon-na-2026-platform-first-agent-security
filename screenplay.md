@@ -314,12 +314,13 @@ created through the OpenShell gateway on Kubernetes. First thing an attacker
 does on a new box: look for secrets. I run env, I grep for a token. Empty. There
 is nothing there. The gateway confirms it from its side too: the sandbox was
 provisioned with zero credentials in its environment. There is nothing to steal
-because nothing was ever handed over. Then I make a request to the upstream the
-policy allows. The agent sends a placeholder where the credential would go. The
-request succeeds, fully authenticated, two hundred.
-**[DEMO: OpenShell on EKS. openshell sandbox create, then exec env grep token
-returns empty; the gateway reports zero provider env; the brokered request to
-the allowed endpoint succeeds.]**
+because nothing was ever handed over. Then I ask for the sandbox's policy:
+version one, effective, set by the platform, not by the agent. And the gateway
+log says the same thing in its own words: provider count zero, env count zero.
+The sandbox works, and it was never handed a key. **[DEMO: OpenShell on EKS.
+openshell sandbox create; exec env grep token returns (no token in env);
+openshell policy get shows Effective; the gateway log shows provider_count=0
+env_count=0.]**
 
 **Click 2:** Here is what actually happened. OpenShell terminated the agent's
 connection at the supervisor, outside the workload boundary, and injected the
@@ -329,10 +330,10 @@ that the agent's own environment was empty the whole time. Steal the agent's
 environment variables and you get a placeholder. Snapshot its disk and you get a
 placeholder. The credential lived and died outside the tenant boundary, held by
 the supervisor the agent can never reach. That is what "no ambient authority"
-looks like when you actually mean it.
-
-**Live on EKS:** OpenShell gateway on Kubernetes. `openshell sandbox create`, then `openshell sandbox exec ... env | grep -i token` returns nothing.
-**Fallback:** press T for the full-screen terminal replay.
+looks like when you actually mean it. **Live on EKS:** OpenShell gateway on
+Kubernetes. `openshell sandbox create`, then `openshell sandbox exec ... env |
+grep -i token` returns nothing. **Fallback:** press T for the full-screen
+terminal replay.
 
 ## Slide 14 - OpenShell on Kubernetes, in production. (~1:16)
 

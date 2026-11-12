@@ -227,8 +227,8 @@ click
 
 ▶ No token in the sandbox, and the gateway handed it zero credentials.
 So, live, I am the agent again, inside a hardware-isolated sandbox created through the OpenShell gateway on Kubernetes. First thing an attacker does on a new box: look for secrets. I run env, I grep for a token. Empty. There is nothing there. The gateway confirms it from its side too: the sandbox was provisioned with zero credentials in its environment. There is nothing to steal because nothing was ever handed over.
-Then I make a request to the upstream the policy allows. The agent sends a placeholder where the credential would go. The request succeeds, fully authenticated, two hundred.
-[DEMO: OpenShell on EKS. openshell sandbox create, then exec env grep token returns empty; the gateway reports zero provider env; the brokered request to the allowed endpoint succeeds.]
+Then I ask for the sandbox's policy: version one, effective, set by the platform, not by the agent. And the gateway log says the same thing in its own words: provider count zero, env count zero. The sandbox works, and it was never handed a key.
+[DEMO: OpenShell on EKS. openshell sandbox create; exec env grep token returns (no token in env); openshell policy get shows Effective; the gateway log shows provider_count=0 env_count=0.]
 
 click
 
