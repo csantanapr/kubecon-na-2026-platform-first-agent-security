@@ -14,7 +14,7 @@ pools. Built on CNCF projects, demoed live.
 ## What is in this repo
 
 - `slides/platform-first-agent-security-slim.html` - the deck, and the file the
-  slides site serves. 20 slides, self-contained (works offline from `file://`).
+  slides site serves. 21 slides, self-contained (works offline from `file://`).
   Open in Chrome, `f` for fullscreen, arrow keys / space to advance (steps
   reveal first, then the next slide). `s` opens the presenter view: speaker
   notes split into `click` sections, timer, next-slide preview. On the four

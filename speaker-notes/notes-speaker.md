@@ -353,6 +353,11 @@ click
 Warm it. Make the secure path the fast path, so your developers take it without even thinking, because the safe choice is also the quick one.
 The platform enforces. The agent just runs. The security does not live in the model and it does not live in the prompt. It lives in the environment you build. That is the whole talk.
 
+## try-it
+
+▶ Everything is in one repo: scan the code and try it tonight.
+If you want to try any of this, it is all in one repo: the slides, the speaker notes, the kind demo, and every YAML file you saw. Scan the code, clone it, and run install and run. You will have kro, kagent and Agent Substrate on your laptop in about ten minutes.
+
 ## thank-you
 
 ▶ Thank you; two quick asks.
@@ -365,5 +370,5 @@ First, please rate this session: scan the QR code on screen with your phone came
 
 click
 
-▶ Come find me and tell me what you're building.
-Second, come find me. LinkedIn, X, GitHub, and santana dot dev. I post about containers and AI agents, I share the demos from this talk, and I would genuinely love to hear what you are building and what is breaking. The hallway track beats the stage every time, so let us keep talking out there. Thank you.
+▶ Follow me on LinkedIn and tell me what you're building.
+Second, follow me on LinkedIn. I post about containers and AI agents there, I share the demos from this talk, and I would genuinely love to hear what you are building and what is breaking. The hallway track beats the stage every time, so let us keep talking out there. Thank you.
