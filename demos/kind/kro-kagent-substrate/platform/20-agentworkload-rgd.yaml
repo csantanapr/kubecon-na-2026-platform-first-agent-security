@@ -1,0 +1,96 @@
+# kro on kagent: the developer-facing agent API.
+#
+# A ResourceGraphDefinition turns a group of resources into a new Kubernetes
+# API. kro generates the AgentWorkload CRD from the schema below and, for each
+# AgentWorkload, creates:
+#   - an EgressPolicy: the only HTTPS origins the agent and its tools may reach
+#     (Agent Substrate denies everything else)
+#   - an AgentTemplate: the agent's behavior (prompt and model)
+#   - an Agent: pairs the template with the platform's secure-default Harness,
+#     which runs it as a Substrate Actor in the tenant's gVisor WorkerPool
+#   - a SandboxTemplate: a tools sandbox with the same egress allow-list
+#
+# The developer never picks a runtime, a worker pool, or a network rule. The
+# platform team decides those once, here and in the tenant Graph.
+# Learn more: https://kro.run/docs/concepts/rgd/overview
+#             https://github.com/kagent-dev/kagent/tree/v1.0.1/docs/architecture
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: agentworkload
+spec:
+  schema:
+    apiVersion: v1alpha1
+    group: acme.dev
+    kind: AgentWorkload
+    spec:
+      # What the agent does. The only thing most developers write.
+      prompt: string | required=true
+      description: string | default="An agent on the acme platform"
+      # HTTPS origins the agent may call, for example https://api.github.com.
+      # Empty means no extra egress at all.
+      allowedOrigins: "[]string | default=[]"
+    status:
+      ready: ${agent.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
+      revision: ${agent.status.?latestSuccessfulRevision.orValue("")}
+      egress: ${schema.spec.allowedOrigins}
+  resources:
+    - id: egress
+      includeWhen:
+        - ${size(schema.spec.allowedOrigins) > 0}
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: EgressPolicy
+        metadata:
+          name: ${schema.metadata.name}-egress
+        spec:
+          destinations: '${schema.spec.allowedOrigins.map(o, {"origin": o})}'
+
+    - id: behavior
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: AgentTemplate
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          description: ${schema.spec.description}
+          systemPrompt: ${schema.spec.prompt}
+          # Shared model published by the tenant Graph; only tenant
+          # namespaces are allowed to use it.
+          modelConfig:
+            name: tenant-model
+            namespace: kagent
+
+    - id: agent
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: Agent
+        metadata:
+          name: ${schema.metadata.name}
+        spec:
+          template:
+            ref:
+              name: ${behavior.metadata.name}
+          # Platform-owned runtime: Substrate Actor in a gVisor sandbox.
+          harnessRef:
+            name: secure-default
+          egressPolicyRefs: '${size(schema.spec.allowedOrigins) > 0 ? [{"name": schema.metadata.name + "-egress"}] : []}'
+      readyWhen:
+        - ${agent.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
+
+    - id: tools
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: SandboxTemplate
+        metadata:
+          name: ${schema.metadata.name}-tools
+        spec:
+          workload:
+            # Standalone sandbox images must be pinned by digest.
+            image: docker.io/curlimages/curl@sha256:935d9100e9ba842cdb060de42472c7ca90cfe9a7c96e4dacb55e79e560b3ff40
+          substrate:
+            workerPoolRef:
+              name: agents
+            snapshotPolicy:
+              location: s3://ate-snapshots/kagent/
+          egressPolicyRefs: '${size(schema.spec.allowedOrigins) > 0 ? [{"name": schema.metadata.name + "-egress"}] : []}'

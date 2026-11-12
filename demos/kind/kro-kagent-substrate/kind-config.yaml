@@ -1,0 +1,18 @@
+# kind cluster for the kro + kagent 1.0 + Agent Substrate demo.
+# Based on kagent's own kind config (scripts/kind/kind-config.yaml in kagent-dev/kagent v1.0.1).
+# Substrate WorkerPools project pod identities and trust bundles into each worker,
+# so the API server needs the Pod Certificate and ClusterTrustBundle features.
+# Learn more: https://kubernetes.io/docs/reference/access-authn-authz/certificate-signing-requests/
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: kro-agents
+networking:
+  apiServerAddress: "127.0.0.1"   # keep the API server private to this machine
+featureGates:
+  ClusterTrustBundle: true
+  ClusterTrustBundleProjection: true
+  PodCertificateRequest: true
+runtimeConfig:
+  "certificates.k8s.io/v1beta1": "true"
+nodes:
+  - role: control-plane

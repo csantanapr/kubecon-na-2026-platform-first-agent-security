@@ -2,9 +2,9 @@
 
 30 minutes, Security track, any level. Thesis: agents are untrusted tenants.
 The platform, not the agent, enforces security.
-Timings come from the rehearsal cut (narrated at a measured pace, 23:31 total);
+Timings come from the rehearsal cut (narrated at a measured pace, 27:15 total, with estimated timings for the new kro, Cedar and CNCF slides);
 a live delivery runs a little slower, and the rest of the 30 minutes is buffer and Q&A.
-"Clicks" = staged reveal steps. Demos run live on EKS with the `isolated-sandbox`
+"Clicks" = staged reveal steps. Demos run live on EKS (slide 9 runs on kind) with the `isolated-sandbox`
 RuntimeClass (AWS Nitro Sandbox); each demo slide has a terminal replay of the live run
 (press T on the slide; → next command, Esc close).
 Isolation wording: gVisor is soft isolation, Kata is virtualization, AWS Nitro Sandbox
@@ -98,73 +98,115 @@ a master key, and nobody watching the cameras. The rest of this talk is how the
 platform delivers all three, automatically, for every agent, without a human
 hand-writing YAML each time.
 
-## Slide 5 - Guardrails as an API. (~2:06)
+## Slide 5 - Guardrails as an API. (~1:32 est.)
 
 **Say:** Here is the first problem you hit in practice. Identity, policy, no
-ambient authority: that is a ServiceAccount, a NetworkPolicy, RBAC, a quota, a
-credential broker reference, and a sandbox runtime, per agent. Hand-write that
-for one agent and it is an afternoon. Hand-write it for fifty agents across a
-dozen teams and it is a full-time job that nobody does correctly. The guardrails
-rot. So we do not hand-write it.
+ambient authority: per agent, that is a sandbox, an egress rule, an identity, a
+quota, a model credential. Hand-write that for one agent and it is an afternoon.
+For fifty agents across a dozen teams it is a full-time job nobody does
+correctly. The guardrails rot. So we do not hand-write it.
 
-**Click 1:** Instead, one Custom Resource. I call it AgentWorkload. The
-developer writes what the agent is and what it needs, at the level they actually
-think about: the agent image, the isolation mode, the network profile, the
-credential broker. Four fields. The developer never hand-writes a NetworkPolicy,
-never touches RBAC, never thinks about a RuntimeClass. They declare intent, in
-Git, and they move on. The snippet on screen is illustrative of the shape. Check
-the KRO docs for your version's exact fields; the point is the shape, not the
-spelling. One object, in version control, reviewed like any other change.
+**Click 1:** Instead, one Custom Resource. I call it AgentWorkload. Look at what
+the developer writes: a prompt, and the one API this agent is allowed to call.
+That is it. No runtime class, no worker pool, no network rule, no model key.
+They declare intent, in Git, reviewed like any other change, and they move on.
 
-**Click 2:** And then KRO, the Kube Resource Orchestrator, takes that one object
-and materializes the guardrails. One AgentWorkload becomes the Sandbox with the
-right runtime class, the NetworkPolicy that is default-deny, the ServiceAccount
-and RoleBinding that are least-privilege, the ResourceQuota that bounds the
-blast radius, and the broker reference that keeps credentials out of the
-environment. The developer wrote one thing. The platform produced the rest. That
-is guardrails as an API. And here is the part that matters for the long run, the
-part that makes this worth building. The agent frameworks underneath you are
-going to change every quarter. New runtimes, new SDKs, new model providers, a
-new hot framework every KubeCon. This interface does not have to change. You
-version the composition, not every team's YAML. The abstraction is the
-investment that survives the churn.
+**Click 2:** Then kro, the Kube Resource Orchestrator, turns that one object
+into real kagent objects. kagent just shipped 1.0, and it runs every agent on
+Agent Substrate. So one AgentWorkload becomes an EgressPolicy that is default
+deny with exactly one origin, an AgentTemplate with the prompt and a model the
+platform shares, an Agent pinned to the platform's Harness, and a tools sandbox
+with the same egress. The developer wrote one thing. The platform produced the
+rest. That is guardrails as an API. And the part that matters long term: agent
+frameworks change every quarter. This interface does not have to. You version
+the composition, not every team's YAML.
 
-## Slide 6 - The platform team's half. (~2:18)
+## Slide 6 - The platform team's half. (~1:26 est.)
 
-**Say:** That was the developer's half, the easy half. This is the platform
-team's half, where the real engineering lives. Same AgentWorkload, seen from the
-side that defines it: the KRO ResourceGraphDefinition.
+**Say:** That was the developer's half. This is the platform team's half: the
+kro ResourceGraphDefinition behind AgentWorkload. This is the real file from the
+demo you can run tonight.
 
-**Click 1:** It starts with the schema. The platform team declares the shape of
-the API the developers will use: the agent image, the isolation mode, the
-network profile, the credential broker reference. And critically, sensible
-defaults on all four. Default to the stronger isolation. Default to deny egress.
-Default to the broker. So the developer who writes nothing still gets a
-locked-down agent, and only overrides a field when they have a real, reviewed
-reason to. Safe by default is not a slogan here; it is the default value in a
-schema. Shapes here are illustrative; check the KRO docs for your version. The
-idea is what matters: the platform team owns the schema, so the platform team
-owns what "an agent" even means on this cluster.
+**Click 1:** It starts with the schema. The platform team decides the shape of
+the API: a required prompt, and a list of allowed origins that defaults to
+empty. Empty means no extra egress at all. Safe by default is not a slogan here;
+it is the default value in a schema. And the status rolls everything underneath
+into one ready field, so the developer has one thing to watch.
 
-**Click 2:** Then the resources. Each id in this block is a building block the
-composition stamps out. The Sandbox takes its RuntimeClass from the schema, so
-one agent gets gVisor and the next gets hardware isolation, from the same API.
-The NetworkPolicy is default-deny, egress included. The ServiceAccount plus the
-RoleBinding is the identity, least privilege, nothing by default. The
-ResourceQuota bounds the blast radius so one runaway agent cannot starve the
-cluster. And the broker reference keeps the real credential at the gateway,
-never in the agent's environment. Identity, policy, no ambient authority.
-Composed once, in one place, by the people whose job it is to get it right.
+**Click 2:** Then the resources. The EgressPolicy maps each allowed origin into
+a destination; everything else is denied. The AgentTemplate takes the prompt and
+points at a shared model the platform owns, so no team ever holds a model key.
+And the Agent always uses the secure-default Harness. Developers cannot pick a
+different runtime, because kagent only resolves a Harness in the agent's own
+namespace, and RBAC keeps creating Harnesses with the platform team.
 
-**Click 3:** So the platform team writes this once. Every agent inherits it.
-That is the sentence that makes the tenant model actually scale. The guardrails
-are defined in one file, reviewed by the right people, versioned like code, and
-every single AgentWorkload on the cluster gets them for free, whether the
-developer remembered to ask or not. The security does not depend on the least
-careful developer on your worst day. It depends on one composition, written
-once.
+**Click 3:** So the platform team writes this once. Every agent inherits it. The
+security does not depend on the least careful developer on your worst day. It
+depends on one composition, written once, by the people whose job it is to get
+it right.
 
-## Slide 7 - Three kinds of sandbox. (~2:22)
+## Slide 7 - One label onboards a team. (~1:10 est.)
+
+**Say:** But where does that secure-default Harness come from? Who gives a team
+its sandboxed runtime in the first place? That is the second half of kro, and it
+is new: kro 0.10 shipped two days ago with a Graph API.
+
+**Click 1:** A Graph has no schema and no instances. It is the resources. This
+one reads every namespace with one label, and for each of them stamps out an
+Agent Substrate WorkerPool on gVisor. The same pattern adds the Harness, a
+ServiceAccount for the workers, and a quota.
+
+**Click 2:** So onboarding a team is one label. Label team-a, and it gets a
+gVisor worker pool, the kagent Harness that points at it, an identity for its
+workers, and a quota of five agents. Remove the label, and kro prunes all of it.
+
+**Click 3:** And here is the security detail I love. kro applies a Graph while
+impersonating a ServiceAccount in the Graph's namespace. Every create and delete
+is checked against that ServiceAccount's RBAC. The automation that builds your
+guardrails runs with least privilege too.
+
+## Slide 8 - kro on top. The agent platform underneath. (~1:09 est.)
+
+**Say:** Let me put the layers together, bottom up, because this is the picture
+to take home.
+
+**Click 1:** At the bottom, isolation. gVisor on any cluster, including your
+laptop. MicroVMs where you have KVM. AWS Nitro Sandbox on EKS when you want
+hardware-level isolation.
+
+**Click 2:** On top of that, Agent Substrate. WorkerPools and sandbox classes,
+and Actors: the running agents, with snapshots so they can suspend and resume.
+
+**Click 3:** Then kagent 1.0. It turns an Agent, a template and a Harness into
+Substrate Actors, and it adds the agent lifecycle: sessions, the A2A gateway,
+and an egress gateway that can inject a credential without the agent ever seeing
+it.
+
+**Click 4:** And on top, kro. Not a replacement for any of this. kro does not
+run agents. It is your platform's API: the Graph that onboards tenants and the
+AgentWorkload that developers write.
+
+**Click 5:** So you have two ways in. kro directly on Substrate gives you pools
+and sandbox classes per team. kro on kagent gives you whole agents. In the demo,
+it is both.
+
+## Slide 9 - Try the whole stack on kind. (~0:52 est.)
+
+**Say:** And you can run all of it tonight, on your laptop. kind, Kubernetes
+1.37, kagent 1.0, kro 0.10. No cloud account.
+
+**Click 1:** Three commands. The install script builds the cluster and the
+platform. The run script does what you just saw: label a namespace, apply one
+AgentWorkload, then open a tools sandbox and make two calls. [DEMO: on kind.
+./run.sh, or press T for the replay.]
+
+**Click 2:** Here is what comes back. The agent is Ready, compiled into a
+Substrate Actor. Inside the sandbox, the kernel is gVisor. The one allowed API
+answers two hundred. Anything else does not even resolve. And a namespace the
+platform never onboarded cannot run the same agent at all: there is no Harness
+for it. Three guardrails, and the developer wrote none of them.
+
+## Slide 10 - Three kinds of sandbox. (~2:22)
 
 **Say:** Now let us talk about isolation itself, because this is where a lot of
 teams get the mental model wrong, and the differences really matter when the
@@ -201,7 +243,7 @@ of these through RuntimeClass. One Sandbox API, three boundaries, chosen per
 workload. This talk's pool runs the hardware-isolated runtime, and the next demo
 proves that boundary from inside the guest.
 
-## Slide 8 - The secure path must be the fast path. (~1:40)
+## Slide 11 - The secure path must be the fast path. (~1:40)
 
 **Say:** First live demo, and it is a real EKS cluster, not a toy. The lesson
 here is the one that decides whether any of this gets adopted: the secure path
@@ -229,7 +271,7 @@ warm pool already saved them the thirty seconds.
 **Live on EKS:** warm pool of sandboxes on the `isolated-sandbox` RuntimeClass (AWS Nitro Sandbox). Show the sub-second bind, the bound sandbox's runtime class, and `uname -r` from inside the guest.
 **Fallback:** press T for the full-screen terminal replay.
 
-## Slide 9 - Default deny, explicit allow. (~1:58)
+## Slide 12 - Default deny, explicit allow. (~1:58)
 
 **Say:** Second live demo. Default deny, explicit allow, enforced by the
 platform, in real time. The policy on screen is the entire rulebook for this
@@ -259,7 +301,7 @@ agent's network is a locked room with one labeled door.
 **Live on EKS:** the VPC CNI enforces NetworkPolicy, so no extra CNI install. Two curls from the agent pod: the allowed API returns ok, the open internet times out.
 **Fallback:** press T for the full-screen terminal replay. Offline rehearsal on kind: demos/kind/demo-network-policy/run.sh (installs Calico).
 
-## Slide 10 - The tenant never held the key. (~2:00)
+## Slide 13 - The tenant never held the key. (~2:00)
 
 **Say:** Third demo, and this is my favorite, because it kills an entire class
 of attack. The tenant never held the key. Steal everything the agent has and you
@@ -292,7 +334,7 @@ looks like when you actually mean it.
 **Live on EKS:** OpenShell gateway on Kubernetes. `openshell sandbox create`, then `openshell sandbox exec ... env | grep -i token` returns nothing.
 **Fallback:** press T for the full-screen terminal replay.
 
-## Slide 11 - OpenShell on Kubernetes, in production. (~1:16)
+## Slide 14 - OpenShell on Kubernetes, in production. (~1:16)
 
 **Say:** And I want to be clear about the maturity of this, because last year
 this part of the talk would have been a video with an apology. Not anymore.
@@ -316,7 +358,29 @@ nothing, because the agent was never holding anything worth taking.
 
 No video on this slide any more: the flow ran live on the previous slide.
 
-## Slide 12 - It happened at the frontier too. (~1:17)
+## Slide 15 - OpenShell is moving to Cedar. (~1:14 est.)
+
+**Say:** One more thing about OpenShell, because it changed this week. Today an
+OpenShell policy is YAML, and a Rego engine evaluates it. The project is moving
+to Cedar, a policy language designed so that every policy stays open to
+analysis. The CNCF announcement says it plainly: OpenShell is adopting Cedar as
+its policy language.
+
+**Click 1:** The design is one language per sandbox. You pick YAML or Cedar when
+you create the sandbox, and a Cedar sandbox is decided by Cedar alone. No mixing
+two engines in one decision path.
+
+**Click 2:** And it gives the same answers. The proposal pairs YAML and Cedar
+policies through both engines: 2,909 cases, they agree, and in the five that
+differ Cedar is the stricter one. On screen is the same rule as our demo, in
+Cedar: curl may read the GitHub API, GET, HEAD and OPTIONS only. This is in
+review as RFC 0020, landing in development builds first, so try it, and send
+feedback.
+
+**Click 3:** And notice the pattern. OpenShell and Cedar are both CNCF projects,
+building on each other. That is the theme of the whole stack.
+
+## Slide 16 - It happened at the frontier too. (~1:17)
 
 **Say:** If you think this is overkill, it happened at the frontier too, to
 people who are very good at this. July twenty twenty-six.
@@ -337,7 +401,21 @@ the gap, because finding gaps is what capable optimizers do. So the environment
 has to hold the boundary. The model will not, the prompt cannot, and hoping is
 not a control. The platform is the control.
 
-## Slide 13 - Five patterns. Take them home. (~1:19)
+## Slide 17 - Built on CNCF projects. (~0:54 est.)
+
+**Say:** Step back and look at what you saw tonight. From the platform API down
+to the gVisor sandbox, it is all open source, and it all lives in the CNCF.
+Kubernetes, containerd and Helm, the graduated foundation. kro, from Kubernetes
+SIG Cloud Provider, for guardrails as an API. agent-sandbox, from SIG Apps, for
+sandboxes and warm pools. And five sandbox projects that are brand new to many
+of you: Agent Substrate for sandboxed Actors at scale, kagent for the agent
+lifecycle, OpenShell for credential brokering, contributed by NVIDIA this week,
+Cedar for policy you can analyze, and gVisor, the userspace kernel under the
+agents in the kind demo, which Google just contributed too. No single vendor
+owns the boundary around your agents. You can read every line of it, and you can
+help build it.
+
+## Slide 18 - Five patterns. Take them home. (~1:19)
 
 **Say:** So here is what you take home. Five patterns, and every one of them
 maps to something you just watched work on a live cluster.
@@ -362,7 +440,7 @@ control your developers route around is not a control. Run this checklist
 against every agent you deploy. The ones that fail it are the tenants you have
 not vetted yet, and now you know exactly what to fix.
 
-## Slide 14 - Closing (~1:07)
+## Slide 19 - Closing (~1:07)
 
 **Say:** So let me bring it home. One sentence, five verbs. Treat every agent
 like a tenant you do not trust yet.
@@ -385,12 +463,12 @@ The platform enforces. The agent just runs. The security does not live in the
 model and it does not live in the prompt. It lives in the environment you build.
 That is the whole talk.
 
-## Slide 15 - Thank you. (~0:38)
+## Slide 20 - Thank you. (~0:38)
 
 **Say:** Thank you for the thirty minutes. Two quick asks before you go.
 
-**Click 1:** First, please rate this session in the Sched app. It takes ten
-seconds, and honestly it is how we speakers find out what landed and get invited
+**Click 1:** First, please rate this session: scan the QR code on screen with
+your phone camera. It takes ten seconds, and honestly it is how we speakers find out what landed and get invited
 back to do it again.
 
 **Click 2:** Second, come find me. LinkedIn, X, GitHub, and santana dot dev. I

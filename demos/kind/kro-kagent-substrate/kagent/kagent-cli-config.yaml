@@ -1,0 +1,7 @@
+# kagent CLI config used by install.sh (kagent --config <this file> install).
+# Paths are relative to this file.
+# Learn more: https://github.com/kagent-dev/kagent/blob/v1.0.1/helm/README.md
+install:
+  kagent:
+    valuesFiles:
+      - kagent-values.yaml

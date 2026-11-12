@@ -9,3 +9,6 @@
 *.swo
 .idea/
 .vscode/
+# Local scratch (kubeconfigs, logs, downloaded CLIs).
+tmp/
+.work/

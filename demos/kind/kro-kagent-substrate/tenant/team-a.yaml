@@ -1,0 +1,8 @@
+# A team asks for an agent tenant with one label. The tenant Graph sees the
+# label and creates the WorkerPool, Harness, ServiceAccount and ResourceQuota.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: team-a
+  labels:
+    agents.acme.dev/tenant: "true"

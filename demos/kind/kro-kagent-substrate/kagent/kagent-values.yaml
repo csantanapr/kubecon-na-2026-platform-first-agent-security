@@ -1,0 +1,7 @@
+# Extra Helm values for the kagent chart.
+# Standalone sandboxes need a digest-pinned guest image; the chart leaves it
+# empty by default. This is the sandbox-guest image from the kagent v1.0.1 release.
+# Learn more: https://github.com/kagent-dev/kagent/blob/v1.0.1/docs/architecture/sandboxes.md
+config:
+  sandboxes:
+    guestImage: ghcr.io/kagent-dev/kagent/sandbox-guest@sha256:16e84a2285119ce02cc6ba45ea7f68181eb1527335de85477614fb9a6b5ecf03

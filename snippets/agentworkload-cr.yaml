@@ -1,12 +1,11 @@
-# The developer-facing agent abstraction. From the deck (kro-composition slide).
-# One CR in Git. KRO materializes the guardrails. The developer never hand-writes a NetworkPolicy.
-# Illustrative shape. Verify fields against the KRO ResourceGraphDefinition docs for your version.
+# The developer's half: one object in Git.
+# No runtime class, no worker pool, no network rules. The platform decides those.
 apiVersion: acme.dev/v1alpha1
 kind: AgentWorkload
 metadata:
   name: support-agent
+  namespace: team-a
 spec:
-  agent: support-copilot:v2
-  isolation: gvisor
-  network: default-deny
-  credentials: brokered
+  prompt: You triage GitHub issues for the acme project and suggest labels.
+  allowedOrigins:
+    - https://api.github.com

@@ -1,0 +1,77 @@
+# What the kro controller itself may touch.
+#
+# kro runs in rbac.mode=aggregation: it starts with almost no access, and the
+# platform team grants exactly the kinds kro composes. kro picks these rules up
+# through the aggregate-to-controller label.
+# Learn more: https://kro.run/docs/advanced/access-control
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro-agent-platform
+  labels:
+    rbac.kro.run/aggregate-to-controller: "true"
+rules:
+  # The API kro generates from the AgentWorkload ResourceGraphDefinition.
+  - apiGroups: [acme.dev]
+    resources: [agentworkloads, agentworkloads/status]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # The AgentWorkload ResourceGraphDefinition creates these kagent objects
+  # with kro's own identity, so kro needs full control of them.
+  - apiGroups: [api.kagent.dev]
+    resources: [agents, agenttemplates, egresspolicies, sandboxtemplates]
+    verbs: [get, list, watch, create, update, patch, delete]
+  # The tenant Graph applies objects while impersonating its own
+  # ServiceAccount. kro's own identity only needs to watch them.
+  - apiGroups: [""]
+    resources: [namespaces, serviceaccounts, resourcequotas]
+    verbs: [get, list, watch]
+  - apiGroups: [api.kagent.dev]
+    resources: [harnesses, modelconfigs]
+    verbs: [get, list, watch]
+  - apiGroups: [ate.dev]
+    resources: [workerpools, sandboxconfigs]
+    verbs: [get, list, watch]
+---
+# The identity the tenant Graph runs as. Every create, update and delete the
+# Graph makes is checked against this ServiceAccount's RBAC, so the Graph can
+# never do more than this role allows.
+# Learn more: https://kro.run/docs/concepts/graph/overview#identity-and-permissions
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-tenant-applier
+  namespace: kro-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agent-tenant-applier
+rules:
+  - apiGroups: [""]
+    resources: [namespaces]
+    verbs: [get, list, watch]
+  - apiGroups: [""]
+    resources: [serviceaccounts, resourcequotas]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [ate.dev]
+    resources: [workerpools]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [ate.dev]
+    resources: [sandboxconfigs]
+    verbs: [get, list, watch]
+  - apiGroups: [api.kagent.dev]
+    resources: [harnesses, modelconfigs]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agent-tenant-applier
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agent-tenant-applier
+subjects:
+  - kind: ServiceAccount
+    name: agent-tenant-applier
+    namespace: kro-system

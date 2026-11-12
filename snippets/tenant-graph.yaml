@@ -1,0 +1,131 @@
+# kro on Agent Substrate: the platform team's tenant decorator.
+#
+# A kro Graph (new in kro v0.10, alpha, GraphKind feature gate) has no schema
+# and no instances. It is the resources. This one watches every Namespace
+# labeled agents.acme.dev/tenant=true and gives it a sandboxed place to run
+# agents:
+#   - a Substrate WorkerPool (gVisor sandbox class) and the ServiceAccount its
+#     worker pods run as
+#   - a kagent Harness named secure-default that points at that pool, so every
+#     agent in the namespace runs as a Substrate Actor inside the sandbox
+#   - a ResourceQuota that caps how many agents and sandbox templates a team
+#     can create (blast radius)
+# It also publishes one shared ModelConfig that only tenant namespaces may use.
+#
+# Label a namespace and it gets all of this. Remove the label and kro prunes it.
+# Learn more: https://kro.run/docs/concepts/graph/overview
+#             https://kro.run/examples/graph/namespace-decorator
+apiVersion: kro.run/v1alpha1
+kind: Graph
+metadata:
+  name: agent-tenants
+  namespace: kro-system
+spec:
+  serviceAccountName: agent-tenant-applier
+  nodes:
+    # Read: every Namespace that asked to be an agent tenant.
+    - id: tenants
+      ref:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          selector:
+            matchLabels:
+              agents.acme.dev/tenant: "true"
+
+    # The one model every tenant agent uses. kagent only honors a
+    # cross-namespace model reference when the target allows it, so the
+    # allow-list lives on the model, owned by the platform team.
+    - id: sharedModel
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: ModelConfig
+        metadata:
+          name: tenant-model
+          namespace: kagent
+        spec:
+          provider: OpenAI
+          model: gpt-5-mini
+          apiKeySecret: kagent-openai
+          apiKeySecretKey: OPENAI_API_KEY
+          openAI:
+            apiFormat: responses
+          allowedNamespaces:
+            from: Selector
+            selector:
+              matchLabels:
+                agents.acme.dev/tenant: "true"
+
+    # The identity the tenant's sandbox worker pods run as.
+    - id: workerIdentity
+      forEach:
+        - ns: ${tenants}
+      template:
+        apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: agent-workers
+          namespace: ${ns.metadata.name}
+
+    # Agent Substrate: the pool of worker pods that host this tenant's Actors.
+    # sandboxClasses picks the isolation runtime. gvisor runs on any cluster,
+    # including kind; microvm needs nodes with KVM (or AWS Nitro Sandbox on EKS).
+    - id: workerPool
+      forEach:
+        - ns: ${tenants}
+      template:
+        apiVersion: ate.dev/v1
+        kind: WorkerPool
+        metadata:
+          name: agents
+          namespace: ${ns.metadata.name}
+          # kagent places an agent's Actors only on workers carrying these
+          # labels, so a team's agents never land on another team's pool.
+          labels:
+            kagent.dev/worker-pool-name: agents
+            kagent.dev/worker-pool-namespace: ${ns.metadata.name}
+        spec:
+          # One worker pod hosts many Actors. Add replicas for headroom and
+          # spread across nodes on a real cluster.
+          replicas: 1
+          workerImage: ghcr.io/kagent-dev/substrate/ateworker-gvisor:v1.0.0
+          sandboxClasses:
+            - name: gvisor
+              configRef:
+                name: gvisor-default
+          template:
+            serviceAccountName: agent-workers
+
+    # kagent: how agents in this namespace run. Agents can only reference a
+    # Harness in their own namespace, so the platform team owns the runtime.
+    - id: harness
+      forEach:
+        - ns: ${tenants}
+      template:
+        apiVersion: api.kagent.dev/v1alpha3
+        kind: Harness
+        metadata:
+          name: secure-default
+          namespace: ${ns.metadata.name}
+        spec:
+          kagent: {}
+          substrate:
+            workerPoolRef:
+              name: agents
+            snapshotPolicy:
+              location: s3://ate-snapshots/kagent/
+
+    # Blast radius: cap what one team can create.
+    - id: quota
+      forEach:
+        - ns: ${tenants}
+      template:
+        apiVersion: v1
+        kind: ResourceQuota
+        metadata:
+          name: agent-limits
+          namespace: ${ns.metadata.name}
+        spec:
+          hard:
+            count/agents.api.kagent.dev: "5"
+            count/sandboxtemplates.api.kagent.dev: "5"
