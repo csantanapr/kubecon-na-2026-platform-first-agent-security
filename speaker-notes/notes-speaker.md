@@ -225,7 +225,7 @@ Third demo, and this is my favorite, because it kills an entire class of attack.
 
 click
 
-▶ No token in the sandbox, yet the allowed request succeeds.
+▶ No token in the sandbox, and the gateway handed it zero credentials.
 So, live, I am the agent again, inside a hardware-isolated sandbox created through the OpenShell gateway on Kubernetes. First thing an attacker does on a new box: look for secrets. I run env, I grep for a token. Empty. There is nothing there. The gateway confirms it from its side too: the sandbox was provisioned with zero credentials in its environment. There is nothing to steal because nothing was ever handed over.
 Then I make a request to the upstream the policy allows. The agent sends a placeholder where the credential would go. The request succeeds, fully authenticated, two hundred.
 [DEMO: OpenShell on EKS. openshell sandbox create, then exec env grep token returns empty; the gateway reports zero provider env; the brokered request to the allowed endpoint succeeds.]
