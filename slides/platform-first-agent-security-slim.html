@@ -1342,7 +1342,7 @@ resolve Harness "team-b/secure-default":
       <p class="slide-body" style="margin-top:20px" data-step="2">The agent doesn't choose where it goes. The platform decides, per destination, before the packet leaves.</p>
       <div data-step="1">
       <p class="demo-live">Live demo: two curls</p>
-      <p class="demo-cmd">$ curl https://evil.example.com<br><span class="deny">denied</span><br>$ curl https://api.allowed.com<br><span class="allow">200 OK</span></p>
+      <p class="demo-cmd">$ curl https://example.com/<br><span class="deny">denied</span><br>$ curl http://api-allowed/<br><span class="allow">200 OK</span></p>
       <div class="sim-fallback">
         <p class="sim-fallback-label">No cluster? Replay the live run.</p>
         <button type="button" class="term-launch" data-term="network" aria-label="Open the Default deny, explicit allow terminal replay full screen"><span class="tl-bar"><i></i><i></i><i></i><b>Default deny, explicit allow</b></span><span class="tl-body"><span class="tl-p">$</span> kubectl exec agent -- curl -s -m5 http://api-allowed/</span><span class="tl-hint">Click, or press T, to open full screen</span></button>
